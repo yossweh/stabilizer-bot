@@ -60,6 +60,26 @@ def get_w3():
     raise ConnectionError("No RPC available")
 
 def load_wallet(address=None):
+    """Load wallet from wallets.json (local) or ~/.agent/credentials/evm_wallets.json"""
+    local_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "wallets.json")
+    
+    # Try local wallets.json first (user-friendly for other devs)
+    if os.path.exists(local_path):
+        with open(local_path) as f:
+            wallets = json.load(f)
+        if isinstance(wallets, list):
+            if address:
+                w = next(x for x in wallets if x["address"].lower() == address.lower())
+            else:
+                w = wallets[0]
+        else:
+            w = wallets[0] if isinstance(wallets, dict) and "wallets" in wallets else wallets
+        acct = Account.from_key(w["private_key"])
+        if address:
+            assert acct.address.lower() == address.lower(), "Key mismatch"
+        return acct
+    
+    # Fall back to default agent path
     with open(WALLET_FILE) as f:
         data = json.load(f)
     if address:
@@ -183,13 +203,19 @@ def execute_swap(w3, acct, token_in, token_out, amount_wei, slippage_bps=50):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--whitelist-check", action="store_true")
+    parser.add_argument("--balances", action="store_true")
     parser.add_argument("--faucet", action="store_true")
     parser.add_argument("--swap", nargs=2, metavar=("FROM", "TO"))
     parser.add_argument("--rotate", action="store_true")
     parser.add_argument("--cron", action="store_true")
-    parser.add_argument("--wallet", default="0xdE691F3d1Fe01F7a6654754461733e5e648289C5")
+    parser.add_argument("--wallet", help="Wallet address (required)")
     parser.add_argument("--cycles", type=int, default=100)
     args = parser.parse_args()
+    
+    if not args.wallet:
+        parser.print_help()
+        print("\n❌ --wallet is required. Use --wallet 0xYourAddress")
+        sys.exit(1)
     
     acct = load_wallet(args.wallet)
     w3 = get_w3()
@@ -198,6 +224,18 @@ if __name__ == "__main__":
         wl = check_whitelist(acct.address)
         print(f"Wallet: {acct.address}")
         print(f"Whitelisted: {wl}")
+        sys.exit(0)
+    
+    if args.balances:
+        print(f"Wallet: {acct.address}")
+        print(f"ETH: {w3.eth.get_balance(acct.address) / 1e18:.4f}")
+        for name, addr in CONTRACTS.items():
+            if name in ("Router", "AMM", "Faucet"):
+                continue
+            c = w3.eth.contract(address=Web3.to_checksum_address(addr), abi=ERC20_ABI)
+            bal = c.functions.balanceOf(acct.address).call()
+            dec = c.functions.decimals().call()
+            print(f"{name}: {bal / 10**dec:.2f}")
         sys.exit(0)
     
     if args.faucet:

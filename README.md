@@ -42,7 +42,7 @@ Create `wallets.json` in the project directory:
 ]
 ```
 
-Or use the default path at `~/.agent/credentials/evm_wallets.json` (see [format below](#wallet-format)).
+> ⚠️ `wallets.json` is in `.gitignore` — your private key stays local and is never pushed to GitHub.
 
 ### 3. Make sure your wallet is whitelisted
 
@@ -99,30 +99,22 @@ python stabilizer_bot.py --balances --wallet 0x...
 
 ## Wallet Format
 
-The bot supports two wallet sources:
-
-### 1. Default path (`~/.agent/credentials/evm_wallets.json`)
-
-```json
-{
-  "description": "EVM wallets",
-  "main_wallet_index": 0,
-  "wallets": [
-    {"index": 0, "address": "0x...", "private_key": "0x..."}
-  ]
-}
-```
-
-### 2. Custom `wallets.json` in project directory
+Create a `wallets.json` file in the project directory (it's in `.gitignore`, so it won't be pushed):
 
 ```json
 [
   {
-    "address": "0x...",
-    "private_key": "0x..."
+    "address": "0xYourWalletAddress",
+    "private_key": "0xYourPrivateKey"
   }
 ]
 ```
+
+> ⚠️ The `private_key` value above is a placeholder. Replace it with your actual private key. The file is ignored by git and will never be pushed.
+
+### Alternative: Default Hermes path
+
+The bot also supports `~/.agent/credentials/evm_wallets.json` (Hermes agent format) as a fallback.
 
 ## Cron Setup
 

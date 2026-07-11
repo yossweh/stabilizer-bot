@@ -6,6 +6,14 @@ import argparse, json, os, time, sys, datetime, urllib.request
 from decimal import Decimal
 from eth_account import Account
 from web3 import Web3
+from dotenv import load_dotenv
+
+# ── LOAD ENV ────────────────────────────────────────────────────
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
+
+# Wallet dari .env — WALLET_ADDRESS dan PRIVATE_KEY wajib ada
+WALLET_ADDRESS = os.getenv("WALLET_ADDRESS", "").strip()
+PRIVATE_KEY = os.getenv("PRIVATE_KEY", "").strip()
 
 # ── CONFIG ──────────────────────────────────────────────────────
 CHAIN_ID = 11155111
@@ -31,7 +39,6 @@ ROTATION = ["USDC", "USDT", "USDS", "PYUSD", "USDC"]
 DAILY_SP_CAP = 20000
 COOLDOWN = 15
 SP_TRACKER = os.path.expanduser("~/.hermes/cron/output/sp_tracker.json")
-WALLET_FILE = os.path.expanduser("~/.agent/credentials/evm_wallets.json")
 
 ERC20_ABI = [
     {"inputs":[{"name":"a","type":"address"}],"name":"balanceOf","outputs":[{"name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
@@ -60,34 +67,15 @@ def get_w3():
     raise ConnectionError("No RPC available")
 
 def load_wallet(address=None):
-    """Load wallet from wallets.json (local) or ~/.agent/credentials/evm_wallets.json"""
-    local_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "wallets.json")
+    """Load wallet from .env (WALLET_ADDRESS + PRIVATE_KEY)."""
+    if not PRIVATE_KEY:
+        raise ValueError("PRIVATE_KEY not set in .env. Create stabilizer-bot/.env with WALLET_ADDRESS and PRIVATE_KEY.")
     
-    # Try local wallets.json first (user-friendly for other devs)
-    if os.path.exists(local_path):
-        with open(local_path) as f:
-            wallets = json.load(f)
-        if isinstance(wallets, list):
-            if address:
-                w = next(x for x in wallets if x["address"].lower() == address.lower())
-            else:
-                w = wallets[0]
-        else:
-            w = wallets[0] if isinstance(wallets, dict) and "wallets" in wallets else wallets
-        acct = Account.from_key(w["private_key"])
-        if address:
-            assert acct.address.lower() == address.lower(), "Key mismatch"
-        return acct
+    acct = Account.from_key(PRIVATE_KEY)
     
-    # Fall back to default agent path
-    with open(WALLET_FILE) as f:
-        data = json.load(f)
-    if address:
-        w = next(x for x in data["wallets"] if x["address"].lower() == address.lower())
-    else:
-        w = data["wallets"][data["main_wallet_index"]]
-    acct = Account.from_key(w["private_key"])
-    assert acct.address.lower() == w["address"].lower(), "Key mismatch"
+    if address and acct.address.lower() != address.lower():
+        raise AssertionError(f"PK mismatch: .env wallet={acct.address} vs --wallet={address}")
+    
     return acct
 
 def gp(w3, mult=1.3):

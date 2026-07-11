@@ -7,13 +7,14 @@ Rotates USDC → USDT → USDS → PYUSD → USDC to stack SP points. Stops at 2
 ## Quick Start
 
 ```bash
-pip install web3 eth-account
+pip install web3 eth-account python-dotenv
 ```
 
-Create `wallets.json`:
+Create `.env` (copy from `.env.example`):
 
-```json
-[{"address": "0xYourAddress", "private_key": "0xYourPK"}]
+```bash
+cp .env.example .env
+# Edit .env — fill WALLET_ADDRESS and PRIVATE_KEY
 ```
 
 Check if you're whitelisted:
@@ -39,6 +40,15 @@ python stabilizer_bot.py --rotate --wallet 0xYourAddress
 | `--cron` | Keep rotating until 20k SP cap |
 | `--faucet` | Claim testnet tokens |
 | `--cycles N` | Max cycles (default 100) |
+
+## Configuration
+
+All sensitive data lives in `.env` (gitignored — **never commit it**):
+
+| Variable | Description |
+|----------|-------------|
+| `WALLET_ADDRESS` | Your EVM wallet address |
+| `PRIVATE_KEY` | Private key for the wallet (with `0x` prefix) |
 
 ## Tokens (Sepolia)
 
